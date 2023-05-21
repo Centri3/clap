@@ -13,11 +13,20 @@
 // MIT/Apache 2.0 license.
 
 use clap::Parser;
+use clap_derive::Args;
 
 use crate::utils::get_help;
 
 #[test]
 fn required_argument() {
+    #[derive(Args)]
+    enum A {
+        // A,
+        // B,
+        // D(),
+        // E(String),
+    }
+
     #[derive(Parser, PartialEq, Debug)]
     struct Opt {
         arg: i32,

@@ -53,6 +53,23 @@ pub struct Item {
 }
 
 impl Item {
+    pub fn from_args_enum(input: &DeriveInput, name: Name) -> Result<Self, syn::Error> {
+        let ident = input.ident.clone();
+        let span = input.ident.span();
+        let attrs = &input.attrs;
+        let argument_casing = Sp::new(DEFAULT_CASING, span);
+        let env_casing = Sp::new(DEFAULT_ENV_CASING, span);
+        let kind = Sp::new(Kind::Command(Sp::new(Ty::Other, span)), span);
+
+        let mut res = Self::new(name, ident, None, argument_casing, env_casing, kind);
+        let parsed_attrs = ClapAttr::parse_all(attrs)?;
+        res.infer_kind(&parsed_attrs)?;
+        res.push_attrs(&parsed_attrs)?;
+        res.push_doc_comment(attrs, "about", Some("long_about"));
+
+        Ok(res)
+    }
+
     pub fn from_args_struct(input: &DeriveInput, name: Name) -> Result<Self, syn::Error> {
         let ident = input.ident.clone();
         let span = input.ident.span();
@@ -191,6 +208,20 @@ impl Item {
         }
 
         Ok(res)
+    }
+
+    pub fn from_args_field_enum(
+        enum_ident: &Ident,
+        field: &Field,
+        struct_casing: Sp<CasingStyle>,
+        env_casing: Sp<CasingStyle>,
+    ) -> Result<Self, syn::Error> {
+        let new_field = &Field {
+            ident: Some(field.ident.clone().unwrap_or(enum_ident.clone())),
+            ..field.clone()
+        };
+
+        Self::from_args_field(new_field, struct_casing, env_casing)
     }
 
     pub fn from_args_field(
