@@ -13,20 +13,117 @@
 // MIT/Apache 2.0 license.
 
 use clap::Parser;
+use clap_builder::Arg;
+use clap_builder::ArgGroup;
+use clap_builder::ArgMatches;
+use clap_builder::Args;
+use clap_builder::Command;
+use clap_builder::FromArgMatches;
+use clap_builder::Id;
 use clap_derive::Args;
 
 use crate::utils::get_help;
 
-#[test]
-fn required_argument() {
-    #[derive(Args)]
-    enum A {
-        // A,
-        // B,
-        // D(),
-        // E(String),
+#[derive(Args)]
+enum DerivedA {
+    A,
+    B,
+    C(String),
+    D(String),
+    E { a: String, b: u32 },
+}
+
+impl FromArgMatches for DerivedA {
+    fn from_arg_matches(matches: &ArgMatches) -> Result<Self, clap_builder::Error> {
+        todo!()
     }
 
+    fn update_from_arg_matches(&mut self, matches: &ArgMatches) -> Result<(), clap_builder::Error> {
+        todo!()
+    }
+}
+
+enum BuilderA {
+    A,
+    B,
+    C(String),
+    // How should this be handled?
+    //
+    // D(String, String),
+    //
+    // I assume this should act as though this is a struct? (not related to D above)
+    // i.e.,
+    //
+    // struct E {
+    //     a: u32,
+    //     b: u32,
+    // }
+    //
+    // Or should this not be allowed at all, instead requiring
+    //
+    // E(EInner),
+    //
+    // and elsewhere...
+    //
+    // struct EInner {
+    //     a: u32,
+    //     b: u32,
+    // }
+    //
+    // ?
+    //
+    // E { a: u32, b: u32 },
+}
+
+impl FromArgMatches for BuilderA {
+    fn from_arg_matches(matches: &ArgMatches) -> Result<Self, clap_builder::Error> {
+        Self::from_arg_matches_mut(&mut matches.clone())
+    }
+
+    fn update_from_arg_matches(&mut self, matches: &ArgMatches) -> Result<(), clap_builder::Error> {
+        if matches.contains_id("A") {
+            *self = BuilderA::A;
+        } else if matches.contains_id("B") {
+            *self = BuilderA::B;
+        } else if matches.contains_id("C") {
+            let c = matches.remove_one::<String>("C").unwrap();
+            *self = BuilderA::C(c);
+        }
+
+        Ok(())
+    }
+}
+
+impl Args for BuilderA {
+    fn group_id() -> Option<Id> {
+        Some(Id::from("A"))
+    }
+
+    fn augment_args(cmd: Command) -> Command {
+        cmd.group(ArgGroup::new("A").multiple(false).required(true).args([
+            Id::from("A"),
+            Id::from("B"),
+            Id::from("C"),
+        ]))
+        .arg(Arg::new("A").required(true))
+        .arg(Arg::new("B").required(true))
+        .arg(Arg::new("C").required(true))
+    }
+
+    fn augment_args_for_update(cmd: Command) -> Command {
+        cmd.group(ArgGroup::new("A").multiple(false).required(true).args([
+            Id::from("A"),
+            Id::from("B"),
+            Id::from("C"),
+        ]))
+        .arg(Arg::new("A").required(false))
+        .arg(Arg::new("B").required(false))
+        .arg(Arg::new("C").required(false))
+    }
+}
+
+#[test]
+fn required_argument() {
     #[derive(Parser, PartialEq, Debug)]
     struct Opt {
         arg: i32,
